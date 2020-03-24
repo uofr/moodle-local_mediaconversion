@@ -1,0 +1,15 @@
+# Netbeans
+/nbproject
+# VScode
+.vscode/*
+*.code-workspace
+# Textmate
+*.tmproj
+*.tmproject
+tmtags
+# Submlime
+*.sublime-workspace
+# Mac
+.DS_Store
+# Windows
+Thumbs.db

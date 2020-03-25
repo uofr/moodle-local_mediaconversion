@@ -24,7 +24,7 @@ For example, if using git you can use the following command:
 Must set the following settings to enable the plugin:
 
 * Base Kaltura category path (local_mediaconversion | base_category_path)
- * The location in the KAF where converted files will reside.
+ * The location in the KAF where converted files will reside. You can find the right category to use by going to your KAF under: Configuration Management > Categories > rootCategory. Take the rootCategory and append ">site>channels".
 * Kaltura player skin (local_mediaconversion | player_skin)
  * The same player skin as defined in your KMC for other Kaltura content.
 

@@ -50,19 +50,42 @@ define('MC_KALTURA_WIDTH', 608);
  */
 function local_cm_get_kaltura_client($configsettings) {
     global $USER;
-    $config = new KalturaConfiguration($configsettings->partner_id);
-    $config->format = KalturaClientBase::KALTURA_SERVICE_FORMAT_PHP;
-    $client = new KalturaClient($config);
+    //$config = new KalturaConfiguration($configsettings->partner_id);
+    //$config->format = KalturaClientBase::KALTURA_SERVICE_FORMAT_PHP;
+    //$client = new KalturaClient($config);
+	
+	/*
+	$kaltura = new kaltura_connection();
+	$connection = $kaltura->get_connection(true, KALTURA_SESSION_LENGTH);
+	$context = context_user::instance($USER->id);
+	*/
+	
+	
+    $kalturahost = local_kaltura_get_host();
+    $partnerid = local_kaltura_get_partner_id();
+    $uiconfid = local_kaltura_get_player_uiconf('player_resource');
+	
+	$client_obj = local_kaltura_login(true);
+	
+	
+	//die($configsettings->adminsecret.'|'.$configsettings->publishername.'|'.$configsettings->partner_id);
+
     try {
-        $session = $client->session->start($configsettings->adminsecret,
-                $USER->username, KalturaSessionType::ADMIN, $configsettings->partner_id);
+        //$session = $client->session->start($configsettings->adminsecret,
+        //        $configsettings->publishername, KalturaSessionType::ADMIN, $configsettings->partner_id);
+		
+		//$session = $connection->session->start($secret, $publishername, KalturaSessionType::ADMIN, $partnerid, $expiry);
+		
+		$session = $client_obj->session->start($configsettings->adminsecret,
+		                $configsettings->publishername, KalturaSessionType::ADMIN, $configsettings->partner_id);
+		
     } catch (Exception $ex) {
         if (!isset($session)) {
             die("Could not establish Kaltura session. Please verify that you are using valid Kaltura partner credentials.");
         }
     }
-    $client->setKs($session);
-    return $client;
+    $client_obj->setKs($session);
+    return $client_obj;
 }
 
 /**
@@ -97,8 +120,16 @@ function local_cm_get_course_admin_usernames($course) {
  */
 function local_cm_upload_video_from_filepath(\KalturaClient $client, $filepath,
         $title, $description, $course) {
-    $uploadtoken = $client->media->upload($filepath);
-    $entry = new KalturaMediaEntry();
+
+	mtrace('local_cm_upload_video_from_filepath func|fp:'.$filepath);
+    
+	//die(var_dump($client));
+	
+	$uploadtoken = $client->media->upload($filepath);
+	
+	mtrace('uploadtoken:'.var_dump($uploadtoken));
+    
+	$entry = new KalturaMediaEntry();
     $entry->entitledUsersEdit = local_cm_get_course_admin_usernames($course);
     $entry->entitledUsersPublish = $entry->entitledUsersEdit;
     $entry->name = $title;
@@ -107,7 +138,7 @@ function local_cm_upload_video_from_filepath(\KalturaClient $client, $filepath,
     try {
         $entry = $client->media->addFromUploadedFile($entry, $uploadtoken);
     } catch (Exception $ex) {
-        echo get_string('faileduploaderror', 'local_mediaconversion');
+        mtrace(get_string('faileduploaderror', 'local_mediaconversion'));
         return null;
     }
     return $entry;
@@ -441,20 +472,31 @@ function local_cm_convert_video(stored_file $file, $argsinfo, $userid, $cmid) {
         mtrace('Failed to copy file with id ' . $file->get_id() . ' for cm instance ' . $cmid);
         return null;
     }
+	
+	mtrace('trying sumpin');
     // Get Kaltura category settings from config settings.
     $localconfigsettings = get_config('local_mediaconversion');
     if (!isset($localconfigsettings->base_category_path)) {
-        echo get_string('missingbasecatpatherror', 'local_mediaconversion');
+        mtrace(get_string('missingbasecatpatherror', 'local_mediaconversion'));
         return null;
     }
+	
+	mtrace('yo yo');
     // Get the configsettings for the Kaltura plugin.
     $configsettings = local_kaltura_get_config();
     $client = local_cm_get_kaltura_client($configsettings);
+	
+	mtrace('try upload-client');
+	//die(var_dump($client));
+	
     // Upload the file to Kaltura.
     if (!$entry = local_cm_upload_video_from_filepath($client,
             $pathtofile, $argsinfo->name, $argsinfo->description, $argsinfo->courseobject)) {
+				mtrace('Upload failed dude');
         return null;
     }
+	mtrace('yayo');
+	
     // Get/make the appropriate category in the KMC for the video.
     if (!$category = local_cm_get_kaltura_category($client,
             $argsinfo->courseobject, $localconfigsettings->base_category_path)) {
@@ -622,6 +664,10 @@ function local_cm_convert_and_get_new_text($modulename, $cmid, $contextid, $user
     $filenames = local_cm_get_filenames_from_intro($text, $startmatch, $endmatch);
     $newtext = $text;
     $numconverted = 0;
+	
+    mtrace('We got this far ' . print_r($filenames,1));
+	
+	
     // Loop through each of the filenames found.
     foreach ($filenames as $filename) {
         // Find the appropriate video file.
@@ -632,6 +678,9 @@ function local_cm_convert_and_get_new_text($modulename, $cmid, $contextid, $user
         // file - this is important since we call local_cm_package_argsinfo with
         // an empty string for the name field.
         $argsinfo->name = $file->get_filename();
+		
+		mtrace('argsinfo|'. $file->get_filename());
+		
         // Try to convert the video itself. A lot of the modinfo it returns is
         // useless for this task, but we do need the entry id.
         if (!$newtempmodinfo = local_cm_convert_video($file, $argsinfo, $userid, $cmid)) {
@@ -639,6 +688,9 @@ function local_cm_convert_and_get_new_text($modulename, $cmid, $contextid, $user
                         . ' for cm instance ' . $cmid);
             continue;
         }
+		
+		mtrace('are we here? ' . $newtempmodinfo->entry_id);
+		
         // Similar to what's in lib/editor/atto/plugins/kalturamedia/yui/src/button.js.
         $content = '<a href="' . local_kaltura_cm_build_source_url($newtempmodinfo->entry_id,
             $newtempmodinfo->height, $newtempmodinfo->width) . '">tinymce-kalturamedia-embed'

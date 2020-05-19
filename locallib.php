@@ -97,7 +97,8 @@ function local_cm_get_course_admin_usernames($course) {
  */
 function local_cm_upload_video_from_filepath(\KalturaClient $client, $filepath,
         $title, $description, $course) {
-	$uploadtoken = $client->media->upload($filepath);
+    $token = $client->uploadToken->add();
+    $client->uploadToken->upload($token->id, $filepath);
 	$entry = new KalturaMediaEntry();
     $entry->entitledUsersEdit = local_cm_get_course_admin_usernames($course);
     $entry->entitledUsersPublish = $entry->entitledUsersEdit;
@@ -450,7 +451,6 @@ function local_cm_convert_video(stored_file $file, $argsinfo, $userid, $cmid) {
 
     // Get the configsettings for the Kaltura plugin.
     $configsettings = local_kaltura_get_configuration_obj();
-
     // $client = local_cm_get_kaltura_client($configsettings);
     $client = local_kaltura_login();
 

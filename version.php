@@ -30,5 +30,5 @@ $plugin->release = 'Media conversion';
 $plugin->requires = 2018051700;
 $plugin->maturity = MATURITY_STABLE;
 $plugin->dependencies = array(
-    'local_kaltura' => 2019051400   // KAF version that supports shortnames.
+    'local_kaltura' => 2018010200   // KAF version that supports shortnames.
 );
